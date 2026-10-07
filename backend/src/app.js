@@ -32,6 +32,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ML Service Health Proxy (Public) — proxies FastAPI /health, no auth required
+// Single source of truth for ML URL: process.env.FASTAPI_BASE_URL (see backend .env)
+app.get('/api/ml-health', async (req, res) => {
+  const mlBase = process.env.FASTAPI_BASE_URL || 'http://127.0.0.1:8000';
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(`${mlBase}/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    const body = await r.json();
+    res.status(r.ok ? 200 : 503).json({ ...body, gateway: 'ok' });
+  } catch (err) {
+    res.status(503).json({
+      status: 'unavailable',
+      gateway: 'ok',
+      ml_error: err.name === 'AbortError' ? 'timeout' : 'connection_refused',
+      message: `FastAPI ML service unreachable at ${mlBase}`,
+    });
+  }
+});
+
 import predictionRoutes from './routes/predictionRoutes.js';
 import weatherRoutes from './routes/weatherRoutes.js';
 

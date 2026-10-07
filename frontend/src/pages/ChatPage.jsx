@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { MarkdownMessage } from '../components/ui/MarkdownMessage';
 import { Badge } from '../components/ui/Badge';
-import { ROUTES } from '../utils/constants';
 import { chatService } from '../services/chatService';
 import { useTranslation } from '../hooks/useTranslation';
 import {
   Send,
-  Sparkles,
   ShieldCheck,
   ShieldAlert,
   BookOpen,
   Info,
   ChevronRight,
   Bot,
+  RotateCcw,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -21,14 +21,32 @@ export function ChatPage() {
   const messagesEndRef = useRef(null);
   const { t, language } = useTranslation();
 
-  // Service initial context
-  const chatContext = chatService.getInitialChatContext();
   const conversationHistory = chatService.getConversationHistory();
 
+  // Create initial localized welcome message
+  const createWelcomeMessage = (lang) => ({
+    id: 'welcome',
+    sender: 'assistant',
+    text: t('chat.welcomeMessage'),
+    sources: [],
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  });
+
   // Message Thread State
-  const [messages, setMessages] = useState(chatContext.initialMessages);
+  const [messages, setMessages] = useState([createWelcomeMessage(language)]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [lastUserQuery, setLastUserQuery] = useState('');
+
+  // Update welcome message on language change if user hasn't started chatting
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [createWelcomeMessage(language)];
+      }
+      return prev;
+    });
+  }, [language, t]);
 
   // Suggested Questions localized
   const suggestedQuestions = [
@@ -45,12 +63,14 @@ export function ChatPage() {
 
   const handleSendMessage = async (textToSend) => {
     const query = textToSend || inputValue;
-    if (!query.trim()) return;
+    if (!query.trim() || isTyping) return;
+
+    setLastUserQuery(query.trim());
 
     const userMessage = {
       id: `usr-${Date.now()}`,
       sender: 'user',
-      text: query,
+      text: query.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -59,14 +79,26 @@ export function ChatPage() {
     setIsTyping(true);
 
     try {
-      // Pass selected language forward to chatService (future RAG backend integration readiness)
-      const assistantReply = await chatService.sendMessage(query, { language });
+      const assistantReply = await chatService.sendMessage(query.trim());
       setMessages((prev) => [...prev, assistantReply]);
     } catch (err) {
-      console.error(err);
+      console.error('[ChatPage] Exception sending message:', err);
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleRetry = (textToRetry) => {
+    const text = textToRetry || lastUserQuery;
+    if (text) {
+      handleSendMessage(text);
+    }
+  };
+
+  const handleClearConversation = () => {
+    chatService.resetSession();
+    setMessages([createWelcomeMessage(language)]);
+    setLastUserQuery('');
   };
 
   const handleFormSubmit = (e) => {
@@ -96,10 +128,22 @@ export function ChatPage() {
           </div>
         </div>
 
-        {/* Small Trust Indicator */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card-warm border border-card-warm-border text-meta-sm text-brand-dark font-medium shadow-soft">
-          <ShieldCheck className="w-4 h-4 text-brand-teal flex-shrink-0" />
-          <span>{t('chat.trustIndicator')}</span>
+        {/* Right Header Actions: Trust Indicator & Clear Chat */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card-warm border border-card-warm-border text-meta-sm text-brand-dark font-medium shadow-soft">
+            <ShieldCheck className="w-4 h-4 text-brand-teal flex-shrink-0" />
+            <span>{t('chat.trustIndicator')}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClearConversation}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-card-warm border border-muted-border text-meta-sm font-medium text-brand-dark transition-colors shadow-soft cursor-pointer"
+            title={t('chat.clearChat')}
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-muted-text" />
+            <span>{t('chat.clearChat')}</span>
+          </button>
         </div>
       </div>
 
@@ -122,6 +166,7 @@ export function ChatPage() {
                 <button
                   key={item.id}
                   type="button"
+                  onClick={() => handleSendMessage(item.title)}
                   className={cn(
                     'w-full text-left p-3 rounded-card-sm border transition-all flex flex-col space-y-1 cursor-pointer',
                     item.active
@@ -191,12 +236,30 @@ export function ChatPage() {
                   </div>
                 ) : (
                   /* Assistant Calm Card Message */
-                  <div className="bg-card-warm/50 border border-card-warm-border rounded-2xl rounded-bl-none p-5 sm:p-6 max-w-[95%] sm:max-w-[88%] space-y-4 shadow-soft text-left">
+                  <div
+                    className={cn(
+                      'rounded-2xl rounded-bl-none p-5 sm:p-6 max-w-[95%] sm:max-w-[88%] space-y-4 shadow-soft text-left border',
+                      msg.isError
+                        ? 'bg-amber-50/50 border-amber-300'
+                        : 'bg-card-warm/50 border-card-warm-border'
+                    )}
+                  >
                     {/* Companion Avatar & Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-muted-border/50">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-brand-teal/20 text-brand-teal-dark flex items-center justify-center shadow-soft">
-                          <Bot className="w-3.5 h-3.5 text-brand-teal" />
+                        <div
+                          className={cn(
+                            'w-6 h-6 rounded-full flex items-center justify-center shadow-soft',
+                            msg.isError
+                              ? 'bg-amber-200 text-amber-800'
+                              : 'bg-brand-teal/20 text-brand-teal-dark'
+                          )}
+                        >
+                          {msg.isError ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                          ) : (
+                            <Bot className="w-3.5 h-3.5 text-brand-teal" />
+                          )}
                         </div>
                         <span className="text-meta-sm font-semibold text-brand-dark">
                           {t('chat.title')}
@@ -205,41 +268,24 @@ export function ChatPage() {
                       <span className="text-[11px] text-muted-text">{msg.time}</span>
                     </div>
 
-                    {/* Main Narrative */}
-                    <p className="text-body-md text-brand-dark leading-relaxed whitespace-pre-wrap">
-                      {msg.text}
-                    </p>
-
-                    {/* Optional Context Data Cards */}
-                    {msg.dataPoints && (
-                      <div className="space-y-2 pt-1">
-                        <span className="text-meta-sm font-semibold text-brand-dark block">
-                          {t('chat.basedOnRecentLogs', 'Based on recent logs:')}
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                          {msg.dataPoints.map((dp, i) => (
-                            <div
-                              key={i}
-                              className="p-2.5 rounded-card-sm bg-white border border-muted-border text-meta-sm space-y-0.5"
-                            >
-                              <span className="text-muted-text text-[11px] block">{dp.label}</span>
-                              <span className="font-bold text-brand-dark text-body-md block">
-                                {dp.value}
-                              </span>
-                              <span className="text-[10px] text-muted-text block">{dp.note}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {/* Main Narrative - rendered as Markdown for assistant, plain for errors */}
+                    {msg.isError ? (
+                      <p className="text-body-md text-brand-dark leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    ) : (
+                      <MarkdownMessage content={msg.text} className="text-body-md" />
                     )}
 
-                    {/* Recommendation */}
-                    {msg.recommendation && (
-                      <div className="p-3.5 rounded-card-sm bg-brand-sage/15 border border-brand-sage/35 text-meta-md text-brand-dark leading-relaxed space-y-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-dark block">
-                          Gentle Routine Suggestion:
-                        </span>
-                        <p>{msg.recommendation}</p>
+                    {/* Retry button on error */}
+                    {msg.isError && (
+                      <div className="pt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleRetry()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-meta-sm font-medium transition-colors shadow-soft cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>{t('chat.retryBtn')}</span>
+                        </button>
                       </div>
                     )}
 
@@ -247,18 +293,16 @@ export function ChatPage() {
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="pt-2 border-t border-muted-border/50 text-[11px] text-muted-text flex items-start gap-1.5 flex-wrap">
                         <BookOpen className="w-3.5 h-3.5 text-brand-teal flex-shrink-0 mt-0.5" />
-                        <span className="font-medium text-brand-dark">Sources:</span>
-                        <span>{msg.sources.join(' • ')}</span>
+                        <span className="font-medium text-brand-dark">{t('chat.sourcesLabel')}</span>
+                        <span>{msg.sources.join(' \u00B7 ')}</span>
                       </div>
                     )}
 
-                    {/* Safety Note */}
-                    {msg.safetyNote && (
-                      <div className="p-2.5 rounded-card-sm bg-alert-muted/10 border border-alert-muted/25 text-[11px] text-[#8F443B] flex items-start gap-2">
-                        <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                        <span>{msg.safetyNote}</span>
-                      </div>
-                    )}
+                    {/* Safety Note / Disclaimer */}
+                    <div className="p-2.5 rounded-card-sm bg-alert-muted/10 border border-alert-muted/25 text-[11px] text-[#8F443B] flex items-start gap-2">
+                      <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>{t('chat.disclaimer')}</span>
+                    </div>
                   </div>
                 )}
 
@@ -270,7 +314,7 @@ export function ChatPage() {
 
             {/* Typing Indicator */}
             {isTyping && (
-              <div className="flex items-center gap-2 p-3 bg-card-warm/50 rounded-xl border border-muted-border/60 max-w-[160px] animate-in fade-in">
+              <div className="flex items-center gap-2 p-3 bg-card-warm/50 rounded-xl border border-muted-border/60 max-w-[180px] animate-in fade-in">
                 <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse" />
                 <span className="w-2 h-2 rounded-full bg-brand-sage animate-pulse delay-75" />
                 <span className="w-2 h-2 rounded-full bg-brand-dark animate-pulse delay-150" />

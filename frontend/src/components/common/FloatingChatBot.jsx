@@ -5,13 +5,16 @@ import { chatService } from '../../services/chatService';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
   Bot,
-  Sparkles,
   Send,
   X,
   Maximize2,
   ShieldCheck,
+  RotateCcw,
+  BookOpen,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { MarkdownMessage } from '../ui/MarkdownMessage';
 
 export function FloatingChatBot() {
   const location = useLocation();
@@ -19,43 +22,31 @@ export function FloatingChatBot() {
   const { t, language } = useTranslation();
 
   const [isOpen, setIsOpen] = useState(false);
-  const getWelcomeText = (lang) => {
-    if (lang === 'hi') return 'नमस्ते! मैं MigraineGuardian हूँ, आपका शांत स्वास्थ्य साथी। आज मैं आपके स्वास्थ्य में कैसे सहायता कर सकता हूँ?';
-    if (lang === 'mr') return 'नमस्कार! मी MigraineGuardian आहे, तुमचा शांत आरोग्य साथीदार. आज मी तुम्हाला कशी मदत करू शकतो?';
-    return 'Hello! I am MigraineGuardian, your calm companion. How can I support your migraine wellness today?';
-  };
 
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      text: getWelcomeText(language),
-      time: t('common.justNow', 'Just now'),
-    },
-  ]);
+  const createWelcomeMessage = (lang) => ({
+    id: 'welcome',
+    sender: 'assistant',
+    text: t('chat.welcomeMessage'),
+    time: t('common.justNow', 'Just now'),
+  });
 
-  // Update initial welcome message whenever language switches if user hasn't started chatting
+  const [messages, setMessages] = useState([createWelcomeMessage(language)]);
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [lastUserQuery, setLastUserQuery] = useState('');
+
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Update welcome message on language switch if user hasn't sent any messages
   useEffect(() => {
     setMessages((prev) => {
       if (prev.length === 1 && prev[0].id === 'welcome') {
-        return [
-          {
-            id: 'welcome',
-            sender: 'assistant',
-            text: getWelcomeText(language),
-            time: t('common.justNow', 'Just now'),
-          },
-        ];
+        return [createWelcomeMessage(language)];
       }
       return prev;
     });
   }, [language, t]);
-
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
 
   // Suggested prompt chips for fast interaction
   const quickPrompts = [
@@ -79,7 +70,9 @@ export function FloatingChatBot() {
 
   const handleSendMessage = async (textToSend) => {
     const query = textToSend || inputValue;
-    if (!query.trim()) return;
+    if (!query.trim() || isTyping) return;
+
+    setLastUserQuery(query.trim());
 
     const userMsg = {
       id: `usr-${Date.now()}`,
@@ -93,14 +86,26 @@ export function FloatingChatBot() {
     setIsTyping(true);
 
     try {
-      // Pass selected language forward to chatService (future RAG backend integration readiness)
-      const reply = await chatService.sendMessage(query.trim(), { language });
+      const reply = await chatService.sendMessage(query.trim());
       setMessages((prev) => [...prev, reply]);
     } catch (err) {
-      console.error(err);
+      console.error('[FloatingChatBot] Exception sending message:', err);
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleRetry = (textToRetry) => {
+    const text = textToRetry || lastUserQuery;
+    if (text) {
+      handleSendMessage(text);
+    }
+  };
+
+  const handleClearConversation = () => {
+    chatService.resetSession();
+    setMessages([createWelcomeMessage(language)]);
+    setLastUserQuery('');
   };
 
   const handleFormSubmit = (e) => {
@@ -150,8 +155,16 @@ export function FloatingChatBot() {
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 type="button"
+                onClick={handleClearConversation}
+                title={t('chat.clearChat')}
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
                 onClick={handleOpenFullChat}
-                title={t('chat.expandChat') || 'Expand to full screen chat'}
+                title={t('chat.expandChat')}
                 className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
               >
                 <Maximize2 className="w-4 h-4" />
@@ -187,23 +200,42 @@ export function FloatingChatBot() {
                 >
                   <div
                     className={cn(
-                      'p-3 rounded-[16px] text-left leading-relaxed shadow-sm',
+                      'p-3 rounded-[16px] text-left leading-relaxed shadow-sm border',
                       isUser
-                        ? 'bg-brand-dark text-white rounded-br-none'
-                        : 'bg-white text-brand-dark border border-brand-sage/40 rounded-bl-none'
+                        ? 'bg-brand-dark text-white rounded-br-none border-transparent'
+                        : m.isError
+                        ? 'bg-amber-50 text-amber-900 border-amber-300 rounded-bl-none'
+                        : 'bg-white text-brand-dark border-brand-sage/40 rounded-bl-none'
                     )}
                   >
-                    <p className="text-meta-md whitespace-pre-wrap">{m.text}</p>
+                    {isUser ? (
+                      <p className="text-meta-md whitespace-pre-wrap">{m.text}</p>
+                    ) : m.isError ? (
+                      <p className="text-meta-md whitespace-pre-wrap">{m.text}</p>
+                    ) : (
+                      <MarkdownMessage content={m.text} />
+                    )}
 
-                    {/* Rich Data Points preview if assistant */}
-                    {!isUser && m.dataPoints && m.dataPoints.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-brand-sage/25 grid grid-cols-2 gap-1.5">
-                        {m.dataPoints.slice(0, 2).map((dp, i) => (
-                          <div key={i} className="p-1.5 rounded-lg bg-card-warm/80 text-[11px]">
-                            <span className="text-muted-text block">{dp.label}</span>
-                            <span className="font-bold text-brand-dark">{dp.value}</span>
-                          </div>
-                        ))}
+                    {/* Retry option on error */}
+                    {m.isError && (
+                      <div className="mt-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleRetry()}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-medium transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>{t('chat.retryBtn')}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Sources preview */}
+                    {!isUser && m.sources && m.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-brand-sage/25 text-[10px] text-muted-text flex items-start gap-1 flex-wrap">
+                        <BookOpen className="w-3 h-3 text-brand-teal flex-shrink-0 mt-0.5" />
+                        <span className="font-semibold text-brand-dark">{t('chat.sourcesLabel')}</span>
+                        <span>{m.sources.join(' \u00B7 ')}</span>
                       </div>
                     )}
                   </div>
@@ -289,9 +321,6 @@ export function FloatingChatBot() {
         <span className="text-body-md font-bold text-white tracking-tight flex items-center gap-1.5">
           <span>{isOpen ? t('chat.closeAssistant') : t('chat.askMigraineGuardian')}</span>
         </span>
-
-        {/* Subtle sparkle icon */}
-        <Sparkles className="w-3.5 h-3.5 text-brand-teal group-hover:rotate-12 transition-transform hidden sm:inline" />
       </button>
     </div>
   );

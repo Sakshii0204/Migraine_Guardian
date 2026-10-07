@@ -1,8 +1,6 @@
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Load environment variables from .env file
-dotenv.config();
+// IMPORTANT: This must be the FIRST import so that process.env is populated
+// before any other module evaluates process.env at module-load time (ES module hoisting).
+import 'dotenv/config';
 
 import app from './app.js';
 

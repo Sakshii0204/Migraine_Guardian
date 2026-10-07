@@ -415,6 +415,7 @@ export const en = {
   "chat": {
     "title": "MigraineGuardian Companion",
     "subtitle": "Evidence-grounded conversational support for migraine awareness & recovery.",
+    "welcomeMessage": "Hello! I am MigraineGuardian, your calm companion. How can I support your migraine wellness today?",
     "trustIndicator": "Educational support • Not a medical diagnosis",
     "placeholder": "Ask a question or describe your sensations...",
     "sendBtn": "Send Message",
@@ -432,7 +433,18 @@ export const en = {
     "evidenceGuidance": "Evidence-based educational guidance • Confidential",
     "contextSummaryDesc": "MigraineGuardian tracks sleep regularity, hydration stability, and daily stress buffers to provide calming health insights.",
     "basedOnRecentLogs": "Based on recent logs:",
-    "expandChat": "Expand to full screen chat"
+    "expandChat": "Expand to full screen chat",
+    "clearChat": "New Conversation",
+    "retryBtn": "Retry",
+    "sourcesLabel": "Sources:",
+    "disclaimer": "Educational support only • Not intended as medical advice or diagnosis",
+    "emptyState": "No messages yet. Ask a question to start the conversation.",
+    "errorMessage": "Sorry, I couldn't connect to the assistant. Please try again.",
+    "errorServerUnavailable": "The assistant service is currently unavailable. Please try again later.",
+    "errorRateLimit": "Too many requests. Please wait a moment before sending another message.",
+    "errorBadRequest": "Unable to process message. Please rephrase your question and try again.",
+    "errorServerError": "The assistant encountered an internal error. Please try again later.",
+    "errorMalformedResponse": "Received an invalid response from the assistant. Please try again."
   },
   "profile": {
     "title": "Personal Health Profile",

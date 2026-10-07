@@ -31,8 +31,15 @@ app.include_router(explain_router)
 
 @app.get("/health")
 async def health_check():
+    """
+    Liveness + readiness check.
+    Returns model_loaded=True only when the trained .pkl pipeline is in memory
+    and the service is ready to accept /predict requests.
+    """
     return {
-        "status": "ok",
+        "status": "ok" if model_manager.is_loaded else "degraded",
         "service": "migraine-ml-service",
-        "model_loaded": model_manager.is_loaded
+        "model_loaded": model_manager.is_loaded,
+        "model_load_error": model_manager.load_error if not model_manager.is_loaded else None,
+        "experimental_model_loaded": model_manager.is_experimental_loaded,
     }
