@@ -49,8 +49,8 @@ export function OnboardingPage() {
 
   // Step 1: About You - Always start clean from guestDraft
   const [name, setName] = useState(() => guestDraft?.name || '');
-  const [age, setAge] = useState(() => guestDraft?.age || '25-34');
-  const [gender, setGender] = useState(() => guestDraft?.gender || 'Female');
+  const [age, setAge] = useState(() => guestDraft?.age || '');
+  const [gender, setGender] = useState(() => guestDraft?.gender || '');
   const [step1Error, setStep1Error] = useState('');
 
   // Step 2: Migraine History
@@ -328,6 +328,7 @@ export function OnboardingPage() {
                     onChange={(e) => setAge(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-[12px] bg-white border border-brand-sage/50 text-body-md text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
                   >
+                    <option value="">{t('onboarding.selectAge', 'Select your age')}</option>
                     <option value="18-24">18–24 years</option>
                     <option value="25-34">25–34 years</option>
                     <option value="35-44">35–44 years</option>
@@ -346,6 +347,7 @@ export function OnboardingPage() {
                     onChange={(e) => setGender(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-[12px] bg-white border border-brand-sage/50 text-body-md text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
                   >
+                    <option value="">{t('onboarding.selectGender', 'Select your gender')}</option>
                     <option value="Female">{t('onboarding.female', 'Female')}</option>
                     <option value="Male">{t('onboarding.male', 'Male')}</option>
                     <option value="Non-binary">{t('onboarding.nonBinary', 'Non-binary')}</option>

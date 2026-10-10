@@ -22,6 +22,7 @@ export async function updateUserProfileController(req, res, next) {
     const userId = req.user.uid;
     const allowedFields = [
       'name',
+      'email',
       'age',
       'gender',
       'diagnosis',

@@ -306,7 +306,7 @@ export function TopBar() {
               {currentUser?.initials || 'MG'}
             </div>
             <span className="hidden sm:inline text-body-md font-bold text-brand-dark group-hover:text-brand-teal transition-colors">
-              {currentUser?.name || 'Janhvi'}
+              {currentUser?.name || (currentUser?.email ? currentUser.email.split('@')[0] : 'User')}
             </span>
           </Link>
         </div>

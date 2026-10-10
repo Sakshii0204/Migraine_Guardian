@@ -105,9 +105,20 @@ export const authService = {
     }
     const cachedUser = storageService.getItem('migraineguardian_user', null);
     if (cachedUser) {
-      const name = cachedUser.name || formatNameFromEmail(cachedUser.email) || 'User';
+      const email = cachedUser.email || auth?.currentUser?.email || '';
+      const name = cachedUser.name || formatNameFromEmail(email) || 'User';
       return {
         ...cachedUser,
+        email,
+        name,
+        initials: computeInitials(name),
+      };
+    }
+    if (auth && auth.currentUser) {
+      const email = auth.currentUser.email || '';
+      const name = auth.currentUser.displayName || formatNameFromEmail(email) || 'User';
+      return {
+        email,
         name,
         initials: computeInitials(name),
       };
@@ -197,8 +208,10 @@ export const authService = {
     }
     const res = await apiClient.get('/user/profile');
     if (res.ok && res.data) {
+      const email = res.data.email || auth?.currentUser?.email || '';
       const user = {
         ...res.data,
+        email,
         initials: computeInitials(res.data.name || 'User'),
       };
       storageService.setItem('migraineguardian_user', user);
@@ -254,7 +267,7 @@ export const authService = {
 
       // 2. Initialize user profile in backend Firestore
       const res = await apiClient.patch('/user/profile', { name: displayName, email: cleanEmail });
-      const user = res.ok && res.data ? res.data : { name: displayName, email: cleanEmail };
+      const user = res.ok && res.data ? { ...res.data, email: cleanEmail } : { name: displayName, email: cleanEmail };
 
       user.initials = computeInitials(user.name);
       storageService.setItem('migraineguardian_user', user);

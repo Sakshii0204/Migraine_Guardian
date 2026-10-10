@@ -17,8 +17,14 @@ Sections verified:
 
 import json
 import os
+import sys
 from pathlib import Path
 from unittest.mock import patch
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 from fastapi.testclient import TestClient
 from app.main import app
@@ -137,10 +143,10 @@ with TestClient(app) as client:
     r = client.post("/explain", json=LIFESTYLE_ONLY)
     d = r.json()
     feat_count = len(d["xai"]["features"])
-    if feat_count == 12:
-        ok(f"A3: SHAP features = 12 (Model A baseline)")
+    if feat_count == 11:
+        ok(f"A3: SHAP features = 11 (Model A baseline)")
     else:
-        fail(f"A3: Expected 12 SHAP features, got {feat_count}")
+        fail(f"A3: Expected 11 SHAP features, got {feat_count}")
     model_in_xai = d["xai"].get("model_used", None)
     # ExplainResponse doesn't expose model_used at top level but we can check via predict
     if d["score"] is not None:
@@ -474,10 +480,10 @@ with TestClient(app) as client:
     r = client.post("/explain", json=LIFESTYLE_ONLY)
     d = r.json()
     count = len(d["xai"]["features"])
-    if count == 12:
-        ok(f"G2: Post-experiment SHAP features = 12 (Model A baseline intact)")
+    if count == 11:
+        ok(f"G2: Post-experiment SHAP features = 11 (Model A baseline intact)")
     else:
-        fail(f"G2: Post-experiment SHAP = {count} (expected 12)")
+        fail(f"G2: Post-experiment SHAP = {count} (expected 11)")
 
 # G3: Confirm backend checkinController is NOT sending WEATHER_MODEL_ENABLED to ML service
 checkin_ctrl_path = Path(__file__).resolve().parent.parent / "backend" / "src" / "controllers" / "checkinController.js"

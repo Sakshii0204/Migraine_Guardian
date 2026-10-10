@@ -21,7 +21,7 @@ export function ChatPage() {
   const messagesEndRef = useRef(null);
   const { t, language } = useTranslation();
 
-  const conversationHistory = chatService.getConversationHistory();
+  const [conversationHistory, setConversationHistory] = useState(() => chatService.getConversationHistory());
 
   // Create initial localized welcome message
   const createWelcomeMessage = (lang) => ({
@@ -77,6 +77,8 @@ export function ChatPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
+    chatService.addConversationTopic(query.trim());
+    setConversationHistory(chatService.getConversationHistory());
 
     try {
       const assistantReply = await chatService.sendMessage(query.trim());
@@ -97,6 +99,7 @@ export function ChatPage() {
 
   const handleClearConversation = () => {
     chatService.resetSession();
+    setConversationHistory([]);
     setMessages([createWelcomeMessage(language)]);
     setLastUserQuery('');
   };
@@ -161,29 +164,36 @@ export function ChatPage() {
               </Badge>
             </div>
 
-            <div className="space-y-1.5">
-              {conversationHistory.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSendMessage(item.title)}
-                  className={cn(
-                    'w-full text-left p-3 rounded-card-sm border transition-all flex flex-col space-y-1 cursor-pointer',
-                    item.active
-                      ? 'bg-white border-brand-sage/60 font-semibold text-brand-dark shadow-soft'
-                      : 'bg-white/40 border-muted-border/60 hover:bg-white text-muted-text hover:text-brand-dark'
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-meta-md font-medium text-brand-dark truncate">
-                      {item.title}
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-text" />
-                  </div>
-                  <span className="text-[11px] text-muted-text">{item.date}</span>
-                </button>
-              ))}
-            </div>
+            {conversationHistory.length === 0 ? (
+              <div className="p-4 rounded-card-sm bg-white/50 border border-muted-border/60 text-center space-y-1 text-meta-sm text-muted-text">
+                <p className="font-medium text-brand-dark">No recent topics</p>
+                <p className="text-[11px]">Questions asked in this session will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {conversationHistory.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSendMessage(item.title)}
+                    className={cn(
+                      'w-full text-left p-3 rounded-card-sm border transition-all flex flex-col space-y-1 cursor-pointer',
+                      item.active
+                        ? 'bg-white border-brand-sage/60 font-semibold text-brand-dark shadow-soft'
+                        : 'bg-white/40 border-muted-border/60 hover:bg-white text-muted-text hover:text-brand-dark'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-meta-md font-medium text-brand-dark truncate">
+                        {item.title}
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-text" />
+                    </div>
+                    <span className="text-[11px] text-muted-text">{item.date}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Context Summary */}

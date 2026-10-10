@@ -27,11 +27,18 @@ async function getAuthToken() {
 
 async function request(endpoint, options = {}) {
   // Absolute URLs (http/https) → use as-is.
+  // Absolute URLs (http/https) → use as-is.
   // Root-relative paths (/rag-api/...) → pass through; handled by Vite proxy in dev.
-  // Bare paths → prefix with API_BASE_URL.
-  const url = endpoint.startsWith('http') || endpoint.startsWith('/')
-    ? endpoint
-    : `${API_BASE_URL}/${endpoint}`;
+  // All other paths (whether starting with / or not) → prefix with API_BASE_URL.
+  let url;
+  if (endpoint.startsWith('http')) {
+    url = endpoint;
+  } else if (endpoint.startsWith('/rag-api')) {
+    url = endpoint;
+  } else {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    url = `${API_BASE_URL}/${cleanEndpoint}`;
+  }
   
   const token = await getAuthToken();
   

@@ -97,12 +97,12 @@ export function SettingsPage() {
         userId: profile?.userId || profile?.id || currentUser?.userId,
         name: profile?.name || currentUser?.name,
         email: profile?.email || currentUser?.email,
-        diagnosis: profile?.diagnosis || 'Migraine baseline',
-        hasMigraines: profile?.hasMigraines || 'Yes',
-        frequency: profile?.frequency || '1–3 times a month',
-        severity: profile?.severity ?? 6,
-        duration: profile?.duration || '4–12 hours',
-        usesMedication: profile?.usesMedication || 'Yes',
+        diagnosis: profile?.diagnosis || null,
+        hasMigraines: profile?.hasMigraines ?? null,
+        frequency: profile?.frequency || null,
+        severity: profile?.severity ?? null,
+        duration: profile?.duration || null,
+        usesMedication: profile?.usesMedication ?? null,
         baselineTriggers: profile?.baselineTriggers || [],
         selectedFactors: profile?.selectedFactors || [],
         emergencyProtocol: profile?.emergencyProtocol || null,
@@ -533,7 +533,7 @@ export function SettingsPage() {
             <div className="space-y-0.5">
               <span className="text-meta-sm text-muted-text block">{t('settings.registeredEmail')}</span>
               <span className="font-bold text-brand-dark text-body-md">
-                {currentUser?.email || 'janhvi@serene-health.org'}
+                {currentUser?.email || '—'}
               </span>
             </div>
             <Button

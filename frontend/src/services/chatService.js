@@ -11,9 +11,20 @@ import { translate } from '../i18n';
 
 const SESSION_STORAGE_KEY = 'mg_rag_chat_session_id';
 
-const getRagApiBaseUrl = () => {
-  const url = import.meta.env.VITE_RAG_API_URL || 'http://localhost:5000';
-  return url.replace(/\/+$/, '');
+const getChatEndpoint = () => {
+  if (import.meta.env.VITE_USE_DIRECT_RAG === 'true' && import.meta.env.VITE_RAG_API_URL) {
+    const base = import.meta.env.VITE_RAG_API_URL.replace(/\/+$/, '');
+    return `${base}/api/chat`;
+  }
+  return 'chat';
+};
+
+const getHealthEndpoint = () => {
+  if (import.meta.env.VITE_USE_DIRECT_RAG === 'true' && import.meta.env.VITE_RAG_API_URL) {
+    const base = import.meta.env.VITE_RAG_API_URL.replace(/\/+$/, '');
+    return `${base}/health`;
+  }
+  return 'chat/health';
 };
 
 function getOrCreateSessionId() {
@@ -38,6 +49,7 @@ function getErrorKeyForStatus(status) {
     case 500:
       return 'chat.errorServerError';
     case 503:
+    case 504:
     case 0:
       return 'chat.errorServerUnavailable';
     default:
@@ -55,7 +67,32 @@ export const chatService = {
   },
 
   getConversationHistory: () => {
-    return MOCK_CHAT_DATA.conversationHistory;
+    try {
+      const stored = sessionStorage.getItem('mg_chat_recent_topics');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  },
+
+  addConversationTopic: (topicTitle) => {
+    if (!topicTitle || typeof topicTitle !== 'string') return;
+    try {
+      const stored = sessionStorage.getItem('mg_chat_recent_topics');
+      const list = stored ? JSON.parse(stored) : [];
+      const cleanTitle = topicTitle.trim().slice(0, 36);
+      if (!list.some((item) => item.title === cleanTitle)) {
+        list.unshift({
+          id: `topic_${Date.now()}`,
+          title: cleanTitle,
+          date: 'Just now',
+          active: true,
+        });
+        sessionStorage.setItem('mg_chat_recent_topics', JSON.stringify(list.slice(0, 6)));
+      }
+    } catch {}
   },
 
   getSessionId: () => {
@@ -64,6 +101,7 @@ export const chatService = {
 
   resetSession: () => {
     try {
+      sessionStorage.removeItem('mg_chat_recent_topics');
       const newSid = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       sessionStorage.setItem(SESSION_STORAGE_KEY, newSid);
       return newSid;
@@ -74,9 +112,9 @@ export const chatService = {
 
   checkHealth: async () => {
     try {
-      const baseUrl = getRagApiBaseUrl();
-      const response = await apiClient.get(`${baseUrl}/health`);
-      return response.ok && response.data?.status === 'ok';
+      const endpoint = getHealthEndpoint();
+      const response = await apiClient.get(endpoint);
+      return response.ok && (response.data?.status === 'ok' || response.raw?.status === 'ok');
     } catch {
       return false;
     }
@@ -103,8 +141,7 @@ export const chatService = {
       }
     }
 
-    const baseUrl = getRagApiBaseUrl();
-    const endpoint = `${baseUrl}/api/chat`;
+    const endpoint = getChatEndpoint();
 
     try {
       const response = await apiClient.post(endpoint, {
@@ -129,9 +166,17 @@ export const chatService = {
       const status = response.status || 0;
       const isMalformed = response.ok && (!response.data || typeof response.data.answer !== 'string');
       const errorKey = isMalformed ? 'chat.errorMalformedResponse' : getErrorKeyForStatus(status);
-      const errorText = translate(language, errorKey);
+      let errorText = translate(language, errorKey);
 
-      console.warn(`[chatService] API request returned status ${status}. ErrorKey: ${errorKey}`);
+      // Use specific server error message if available
+      if (!response.ok && response.error) {
+        const serverMsg = typeof response.error === 'string' ? response.error : response.error.message;
+        if (serverMsg && typeof serverMsg === 'string' && serverMsg.trim()) {
+          errorText = serverMsg;
+        }
+      }
+
+      console.warn(`[chatService] API request returned status ${status}. Error: ${errorText}`);
 
       return {
         id: `asst-${Date.now()}`,

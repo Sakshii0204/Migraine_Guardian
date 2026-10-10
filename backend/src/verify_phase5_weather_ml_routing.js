@@ -34,7 +34,9 @@ function runSlice2Verification() {
   }
 
   // 1. Inspect checkinController.js implementation
-  const controllerPath = path.resolve('backend/src/controllers/checkinController.js');
+  const controllerPath = fs.existsSync(path.resolve('backend/src/controllers/checkinController.js'))
+    ? path.resolve('backend/src/controllers/checkinController.js')
+    : path.resolve('src/controllers/checkinController.js');
   const controllerContent = fs.readFileSync(controllerPath, 'utf8');
 
   assert(controllerContent.includes('getTodayWeatherRecord'), 'checkinController fetches weather records via firestoreService');
@@ -113,7 +115,9 @@ function runSlice2Verification() {
 
   // TEST 6: Check saveRiskForecast model_used preservation
   console.log('\n[6] Testing firestoreService saveRiskForecast implementation...');
-  const firestorePath = path.resolve('backend/src/services/firestoreService.js');
+  const firestorePath = fs.existsSync(path.resolve('backend/src/services/firestoreService.js'))
+    ? path.resolve('backend/src/services/firestoreService.js')
+    : path.resolve('src/services/firestoreService.js');
   const firestoreContent = fs.readFileSync(firestorePath, 'utf8');
   assert(firestoreContent.includes('model_used: forecastData.model_used'), 'firestoreService saveRiskForecast preserves model_used attribute in risk forecast document');
 

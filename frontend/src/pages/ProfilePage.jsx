@@ -4,9 +4,9 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { MOCK_USER } from '../data/mockUser';
 import { ROUTES } from '../utils/constants';
 import { useTranslation } from '../hooks/useTranslation';
+import { pssService } from '../services/pssService';
 import {
   User,
   Activity,
@@ -38,9 +38,9 @@ export function ProfilePage() {
   const { t } = useTranslation();
   const currentUser = useCurrentUser();
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(() => currentUser?.name || 'Janhvi');
-  const [age, setAge] = useState(() => currentUser?.age || '32');
-  const [gender, setGender] = useState(() => currentUser?.gender || 'Female');
+  const [name, setName] = useState(() => currentUser?.name || (currentUser?.email ? currentUser.email.split('@')[0] : ''));
+  const [age, setAge] = useState(() => currentUser?.age || '');
+  const [gender, setGender] = useState(() => currentUser?.gender || '');
 
   // Keep in sync when currentUser updates
   React.useEffect(() => {
@@ -92,11 +92,25 @@ export function ProfilePage() {
     );
   };
 
-  const pssHistory = [
-    { date: 'Oct 10, 2024', score: 14, label: t('pss.lowStress'), note: t('profile.noteConsistentSleep', 'Consistent sleep buffer') },
-    { date: 'Sept 12, 2024', score: 18, label: t('pss.moderateStress'), note: t('profile.noteWorkTransition', 'Work transition window') },
-    { date: 'Aug 14, 2024', score: 22, label: t('pss.moderateStress'), note: t('profile.noteHigherFatigue', 'Higher fatigue logged') },
-  ];
+  const [pssHistory, setPssHistory] = useState([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadPss() {
+      try {
+        const history = await pssService.getPssHistory(5);
+        if (isMounted) {
+          setPssHistory(Array.isArray(history) ? history : []);
+        }
+      } catch {
+        if (isMounted) setPssHistory([]);
+      }
+    }
+    loadPss();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
@@ -168,6 +182,7 @@ export function ProfilePage() {
                 onChange={(e) => setGender(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-input bg-white border border-muted-border text-body-md"
               >
+                <option value="">Select gender (optional)</option>
                 <option value="Female">Female</option>
                 <option value="Male">Male</option>
                 <option value="Non-binary">Non-binary</option>
@@ -179,15 +194,15 @@ export function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-meta-md">
             <div className="p-4 rounded-card-sm bg-white border border-muted-border space-y-1">
               <span className="text-meta-sm text-muted-text block">{t('profile.fullName')}</span>
-              <span className="text-section-md font-bold text-brand-dark block">{name}</span>
+              <span className="text-section-md font-bold text-brand-dark block">{name || '—'}</span>
             </div>
             <div className="p-4 rounded-card-sm bg-white border border-muted-border space-y-1">
               <span className="text-meta-sm text-muted-text block">{t('profile.age')}</span>
-              <span className="text-section-md font-bold text-brand-dark block">{age} {t('common.hours', { count: '' }).trim() === 'घंटे' ? 'वर्ष' : t('common.hours', { count: '' }).trim() === 'तास' ? 'वर्षे' : 'years'}</span>
+              <span className="text-section-md font-bold text-brand-dark block">{age ? `${age} ${t('common.hours', { count: '' }).trim() === 'घंटे' ? 'वर्ष' : t('common.hours', { count: '' }).trim() === 'तास' ? 'वर्षे' : 'years'}` : '—'}</span>
             </div>
             <div className="p-4 rounded-card-sm bg-white border border-muted-border space-y-1">
               <span className="text-meta-sm text-muted-text block">{t('profile.genderOptional')}</span>
-              <span className="text-section-md font-bold text-brand-dark block">{gender}</span>
+              <span className="text-section-md font-bold text-brand-dark block">{gender || '—'}</span>
             </div>
           </div>
         )}
@@ -220,7 +235,7 @@ export function ProfilePage() {
               <Calendar className="w-3.5 h-3.5 text-brand-teal" />
               <span>{t('profile.typicalFrequency')}</span>
             </div>
-            <div className="text-section-md font-bold text-brand-dark">{currentUser?.frequency || '1–3 times a month'}</div>
+            <div className="text-section-md font-bold text-brand-dark">{currentUser?.frequency || '—'}</div>
             <div className="text-[11px] text-muted-text">{t('profile.selfReportedHistory')}</div>
           </div>
 
@@ -229,7 +244,7 @@ export function ProfilePage() {
               <Activity className="w-3.5 h-3.5 text-brand-teal" />
               <span>{t('profile.averageSeverity')}</span>
             </div>
-            <div className="text-section-md font-bold text-brand-dark">{currentUser?.severity !== undefined ? `${currentUser.severity} / 10` : '6 / 10'}</div>
+            <div className="text-section-md font-bold text-brand-dark">{currentUser?.severity !== undefined && currentUser?.severity !== null ? `${currentUser.severity} / 10` : '—'}</div>
             <div className="text-[11px] text-muted-text">{t('profile.baselineDiscomfort')}</div>
           </div>
 
@@ -238,7 +253,7 @@ export function ProfilePage() {
               <Clock className="w-3.5 h-3.5 text-brand-teal" />
               <span>{t('profile.averageDuration')}</span>
             </div>
-            <div className="text-section-md font-bold text-brand-dark">{currentUser?.duration || '4–12 hours'}</div>
+            <div className="text-section-md font-bold text-brand-dark">{currentUser?.duration || '—'}</div>
             <div className="text-[11px] text-muted-text">{t('profile.standardWindow')}</div>
           </div>
 
@@ -247,7 +262,7 @@ export function ProfilePage() {
               <Pill className="w-3.5 h-3.5 text-brand-teal" />
               <span>{t('profile.usesMedication')}</span>
             </div>
-            <div className="text-section-md font-bold text-brand-dark">{currentUser?.usesMedication === 'Yes' ? 'Active Prescribed' : (currentUser?.usesMedication || 'None / Lifestyle')}</div>
+            <div className="text-section-md font-bold text-brand-dark">{currentUser?.usesMedication ? (currentUser.usesMedication === 'Yes' ? 'Active Prescribed' : currentUser.usesMedication) : '—'}</div>
             <div className="text-[11px] text-muted-text">{t('profile.acutePreventive')}</div>
           </div>
         </div>
@@ -277,29 +292,42 @@ export function ProfilePage() {
           </Link>
         </div>
 
-        <div className="space-y-3">
-          {pssHistory.map((item, idx) => (
-            <div
-              key={idx}
-              className="p-4 rounded-card-sm bg-white border border-muted-border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-brand-dark text-body-md">{item.date}</span>
-                  <Badge variant={item.score > 20 ? 'alert' : item.score > 15 ? 'teal' : 'sage'} size="sm">
-                    {item.label}
-                  </Badge>
+        {pssHistory.length === 0 ? (
+          <div className="p-6 rounded-card-sm bg-white/60 border border-dashed border-brand-sage/60 text-center space-y-2">
+            <p className="text-body-md text-brand-dark font-medium">
+              {t('profile.noPssHistory', 'No PSS assessments recorded yet.')}
+            </p>
+            <p className="text-meta-sm text-muted-text">
+              {t('profile.noPssHistorySub', 'Complete a PSS-10 assessment to track your autonomic stress baseline.')}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pssHistory.map((item, idx) => (
+              <div
+                key={item.assessmentId || idx}
+                className="p-4 rounded-card-sm bg-white border border-muted-border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-brand-dark text-body-md">
+                      {item.completedAt ? new Date(item.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : (item.date || 'Assessment')}
+                    </span>
+                    <Badge variant={item.score > 26 ? 'alert' : item.score > 13 ? 'teal' : 'sage'} size="sm">
+                      {item.category || item.label || 'Standard Assessment'}
+                    </Badge>
+                  </div>
+                  <p className="text-meta-sm text-muted-text">{item.interpretation || item.note || 'Clinical baseline assessment recorded'}</p>
                 </div>
-                <p className="text-meta-sm text-muted-text">{item.note}</p>
-              </div>
 
-              <div className="text-left sm:text-right">
-                <span className="text-section-lg font-bold text-brand-dark">{item.score} / 40</span>
-                <span className="text-[11px] text-muted-text block">{t('dashboard.riskIndex')}</span>
+                <div className="text-left sm:text-right">
+                  <span className="text-section-lg font-bold text-brand-dark">{item.score} / 40</span>
+                  <span className="text-[11px] text-muted-text block">{t('dashboard.riskIndex')}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="p-3.5 rounded-card-sm bg-white/60 border border-muted-border/70 text-meta-sm text-muted-text">
           {t('pss.scoreDescDisclaimer')}

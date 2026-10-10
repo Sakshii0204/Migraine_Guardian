@@ -26,7 +26,12 @@ export const firestoreService = {
     const doc = await userRef.get();
 
     if (doc.exists) {
-      return { id: userId, ...doc.data() };
+      const data = doc.data();
+      if (!data.email && userEmail) {
+        data.email = userEmail;
+        userRef.set({ email: userEmail }, { merge: true }).catch(() => {});
+      }
+      return { id: userId, ...data };
     }
 
     // Default initial profile payload matching frontend contract
@@ -36,26 +41,18 @@ export const firestoreService = {
       name: fallbackName,
       email: userEmail || '',
       initials: computeInitials(fallbackName),
+      age: null,
+      gender: null,
       joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      diagnosis: 'Migraine with sensory aura (episodic)',
-      hasMigraines: 'Yes',
-      frequency: '1–3 times a month',
-      severity: 6,
-      duration: '4–12 hours',
-      usesMedication: 'Yes',
-      baselineTriggers: [
-        'Barometric drops (>6 hPa)',
-        'Sleep disruption (<6.5 hrs)',
-        'Bright fluorescent lighting',
-        'High sensory overload',
-        'Skipped meals / dehydration',
-      ],
+      diagnosis: null,
+      hasMigraines: null,
+      frequency: null,
+      severity: null,
+      duration: null,
+      usesMedication: null,
+      baselineTriggers: [],
       selectedFactors: ['Sleep', 'Stress', 'Screen time', 'Hydration', 'Meals'],
-      emergencyProtocol: {
-        prescribedMedication: 'Rizatriptan 10mg orally at onset',
-        secondaryAction: 'Cold compress, dark room, 500ml electrolyte water',
-        emergencyContact: 'Neurology Clinic - (555) 392-8110',
-      },
+      emergencyProtocol: null,
       currentRiskScore: null,
       riskCategory: null,
       createdAt: new Date().toISOString(),

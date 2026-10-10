@@ -44,9 +44,9 @@ export function translate(language, key, params = {}) {
     text = getNestedTranslation(translations.en, key);
   }
 
-  // Fallback to key if not found in English
+  // Fallback to explicit default text if provided, or key
   if (text === null) {
-    return key;
+    return typeof params === 'string' ? params : key;
   }
 
   // Interpolate parameters like {name}, {count}, {score}, {level}

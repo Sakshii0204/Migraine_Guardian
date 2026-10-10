@@ -1,11 +1,14 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import http from 'http';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH = path.resolve('backend/src/config/migraineguardian-firebase-adminsdk-fbsvc-b7c03e4c99.json');
-dotenv.config({ path: path.resolve('backend/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 let auth, db, weatherApiService;
 

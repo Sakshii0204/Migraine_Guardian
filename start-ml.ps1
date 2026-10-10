@@ -15,4 +15,5 @@ Write-Host " Starting FastAPI at http://127.0.0.1:8000" -ForegroundColor White
 Write-Host "=======================================================" -ForegroundColor Cyan
 
 Set-Location $mlDir
+if (Test-Path ".\.venv\Scripts\Activate.ps1") { & ".\.venv\Scripts\Activate.ps1" }
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload

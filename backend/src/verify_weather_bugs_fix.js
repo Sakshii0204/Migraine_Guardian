@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import http from 'http';
 import { db, auth } from './config/firebaseAdmin.js';
 import { weatherApiService } from './services/weatherApiService.js';
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 function httpRequest(options, postData = null) {
   return new Promise((resolve, reject) => {

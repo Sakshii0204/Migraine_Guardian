@@ -243,10 +243,10 @@ export function Sidebar({ className }) {
               </div>
               <div className="flex flex-col text-left overflow-hidden">
                 <span className="text-body-md font-bold text-brand-dark truncate">
-                  {currentUser?.name || 'Janhvi'}
+                  {currentUser?.name || (currentUser?.email ? currentUser.email.split('@')[0] : 'User')}
                 </span>
                 <span className="text-meta-sm text-muted-text truncate">
-                  {currentUser?.diagnosis?.split('(')[0] || 'Migraine baseline'}
+                  {currentUser?.diagnosis?.split('(')[0] || 'Wellness Profile'}
                 </span>
               </div>
             </div>
